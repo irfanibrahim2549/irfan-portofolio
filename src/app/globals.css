@@ -1,26 +1,73 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-main: #fafafa;
+    --bg-surface: #ffffff;
+    --text-main: #09090b;
+    --text-muted: rgba(9, 9, 11, 0.68);
+    --border-color: rgba(0, 0, 0, 0.09);
+    --card-hover: rgba(37, 99, 235, 0.03);
+    --primary-blue: #2563eb;
+    --status-bg: rgba(37, 99, 235, 0.08);
+    --status-text: #1d4ed8;
+    --status-border: rgba(37, 99, 235, 0.3);
+    --glow-color: rgba(37, 99, 235, 0.4);
+  }
+
+  .dark {
+    --bg-main: #080808;
+    --bg-surface: #121212;
+    --text-main: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.68);
+    --border-color: rgba(250, 250, 250, 0.09);
+    --card-hover: rgba(59, 130, 246, 0.05);
+    --primary-blue: #3b82f6;
+    --status-bg: rgba(59, 130, 246, 0.12);
+    --status-text: #60a5fa;
+    --status-border: rgba(59, 130, 246, 0.35);
+    --glow-color: rgba(59, 130, 246, 0.6);
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: var(--font-plus-jakarta-sans), 'Plus Jakarta Sans', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-plus-jakarta-sans), 'Plus Jakarta Sans', sans-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom Utilities */
+.glass-panel {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(16px);
+}
+
+.status-badge {
+  background-color: var(--status-bg);
+  color: var(--status-text);
+  border: 1px solid var(--status-border);
+}
+
+.status-dot {
+  background-color: var(--status-text);
+  box-shadow: 0 0 12px var(--glow-color);
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
 }
