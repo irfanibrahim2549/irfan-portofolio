@@ -9,6 +9,7 @@ export interface Profile {
   github_url?: string;
   linkedin_url?: string;
   twitter_url?: string;
+  dribbble_url?: string;
   email?: string;
   updated_at?: string;
 }

@@ -4,24 +4,28 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
-import { User, ArrowLeft, Save, LogOut, MessageSquare, Layers, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Save, User, Globe, Mail, CheckCircle2 } from 'lucide-react'
+import { GithubIcon, LinkedinIcon, DribbbleIcon } from '@/components/Icons'
 import Link from 'next/link'
 
 export default function AdminProfilePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [successMsg, setSuccessMsg] = useState('')
+  const [profileId, setProfileId] = useState<string | null>(null)
 
+  // Profile Form States
   const [name, setName] = useState('')
   const [title, setTitle] = useState('')
   const [bio, setBio] = useState('')
-  const [statusText, setStatusText] = useState('Available for work')
+  const [statusText, setStatusText] = useState('Available for freelance & full-time roles')
   const [isAvailable, setIsAvailable] = useState(true)
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [githubUrl, setGithubUrl] = useState('')
   const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [dribbbleUrl, setDribbbleUrl] = useState('')
   const [email, setEmail] = useState('')
-  const [userAuthId, setUserAuthId] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -31,215 +35,258 @@ export default function AdminProfilePage() {
 
   const fetchProfile = async () => {
     setLoading(true)
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      router.push('/admin/login')
-      return
-    }
-
-    setUserAuthId(session.user.id)
-
-    const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+    const { data } = await supabase.from('profiles').select('*').limit(1).single()
     if (data) {
+      setProfileId(data.id)
       setName(data.name || '')
       setTitle(data.title || '')
       setBio(data.bio || '')
-      setStatusText(data.status_text || 'Available for work')
+      setStatusText(data.status_text || 'Available for freelance & full-time roles')
       setIsAvailable(data.is_available ?? true)
+      setAvatarUrl(data.avatar_url || '')
       setGithubUrl(data.github_url || '')
       setLinkedinUrl(data.linkedin_url || '')
-      setEmail(data.email || session.user.email || '')
-    } else {
-      setEmail(session.user.email || '')
+      setDribbbleUrl(data.dribbble_url || '')
+      setEmail(data.email || '')
     }
     setLoading(false)
   }
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setSuccessMsg('')
+  const handleAvatarUpload = async (file: File): Promise<string> => {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `profile_${Date.now()}.${fileExt}`
+    const filePath = `avatars/${fileName}`
 
-    if (!userAuthId) return
+    const { error: uploadError } = await supabase.storage
+      .from('portfolio-assets')
+      .upload(filePath, file, { upsert: true })
 
-    const { error } = await supabase.from('profiles').upsert({
-      id: userAuthId,
-      name,
-      title,
-      bio,
-      status_text: statusText,
-      is_available: isAvailable,
-      github_url: githubUrl,
-      linkedin_url: linkedinUrl,
-      email,
-      updated_at: new Date().toISOString(),
-    })
-
-    if (error) {
-      alert(`Gagal menyimpan profil: ${error.message}`)
-    } else {
-      setSuccessMsg('Profil berhasil diperbarui!')
-      setTimeout(() => setSuccessMsg(''), 3000)
+    if (uploadError) {
+      throw uploadError
     }
-    setSaving(false)
+
+    const { data } = supabase.storage
+      .from('portfolio-assets')
+      .getPublicUrl(filePath)
+
+    return data.publicUrl
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/admin/login')
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+
+    try {
+      let finalAvatarUrl = avatarUrl
+
+      if (avatarFile) {
+        try {
+          finalAvatarUrl = await handleAvatarUpload(avatarFile)
+        } catch (storageErr: any) {
+          console.warn('Storage upload fallback:', storageErr?.message)
+        }
+      }
+
+      const payload = {
+        name,
+        title,
+        bio,
+        status_text: statusText,
+        is_available: isAvailable,
+        avatar_url: finalAvatarUrl || '/profile.jpg',
+        github_url: githubUrl,
+        linkedin_url: linkedinUrl,
+        dribbble_url: dribbbleUrl,
+        email,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (profileId) {
+        const { error } = await supabase.from('profiles').update(payload).eq('id', profileId)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('profiles').insert(payload)
+        if (error) throw error
+      }
+
+      alert('Profil & Live Status berhasil diperbarui!')
+      fetchProfile()
+    } catch (err: any) {
+      alert(`Gagal menyimpan profil: ${err?.message || 'Error'}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl">
+    <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto space-y-8 font-sans">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between glass-panel p-6 rounded-3xl">
         <div className="flex items-center gap-3">
-          <Link href="/" className="p-2 rounded-full border border-[var(--border-color)] hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-[var(--text-main)]">
+          <Link href="/admin/projects" className="p-2 rounded-full border border-[var(--border-color)] hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-[var(--text-main)]">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold">Edit Profil & Info</h1>
-            <p className="text-xs text-[var(--text-muted)]">Kelola informasi nama, bio, dan status ketersediaan live</p>
+            <h1 className="text-xl font-bold">Edit Profil & Live Status</h1>
+            <p className="text-xs text-[var(--text-muted)] font-medium">Kelola informasi diri, status ketersediaan, & tautan media sosial</p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link href="/admin/projects" className="px-4 py-2 rounded-full border border-[var(--border-color)] text-xs font-semibold flex items-center gap-2 hover:bg-[var(--card-hover)]">
-            <Layers className="w-4 h-4 text-emerald-400" />
-            <span>Kelola Projek</span>
-          </Link>
-          <button onClick={handleLogout} className="px-4 py-2 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-semibold flex items-center gap-2 hover:bg-rose-500/20 cursor-pointer">
-            <LogOut className="w-4 h-4" />
-            <span>Keluar</span>
-          </button>
         </div>
       </div>
 
       {loading ? (
-        <p className="text-xs text-[var(--text-muted)]">Memuat profil...</p>
+        <p className="text-xs text-[var(--text-muted)] font-medium">Memuat data profil...</p>
       ) : (
-        <form onSubmit={handleSaveProfile} className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6">
-          {successMsg && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6">
+          {/* Status Availability Settings */}
+          <div className="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/20 space-y-4">
+            <h2 className="text-sm font-bold text-blue-500 flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              <span>Live Status Badge Settings</span>
+            </h2>
 
-          <div className="flex items-center gap-2 font-bold text-lg border-b border-[var(--border-color)] pb-4">
-            <User className="w-5 h-5 text-emerald-400" />
-            <h2>Informasi Personal & Live Status</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-xs font-bold text-[var(--text-muted)]">Teks Status Availability</label>
+                <input
+                  type="text"
+                  required
+                  value={statusText}
+                  onChange={(e) => setStatusText(e.target.value)}
+                  placeholder="Available for freelance & full-time roles"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-blue-500 font-medium"
+                />
+              </div>
+
+              <div className="flex items-center justify-between sm:justify-start gap-3 pt-4 sm:pt-0">
+                <span className="text-xs font-bold text-[var(--text-muted)]">Status Lampu:</span>
+                <button
+                  type="button"
+                  onClick={() => setIsAvailable(!isAvailable)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer border flex items-center gap-2 ${
+                    isAvailable
+                      ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                      : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                  }`}
+                >
+                  <span className={`w-2.5 h-2.5 rounded-full ${isAvailable ? 'bg-blue-500 animate-pulse' : 'bg-amber-400'}`} />
+                  <span>{isAvailable ? 'Available (Hijau/Biru)' : 'Busy (Kuning)'}</span>
+                </button>
+              </div>
+            </div>
           </div>
 
+          {/* Personal Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">Nama Lengkap</label>
+              <label className="text-xs font-bold text-[var(--text-muted)]">Nama Lengkap</label>
               <input
                 type="text"
                 required
-                placeholder="Irfan Developer"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-emerald-500"
+                placeholder="Irfan Ibrahim"
+                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-blue-500 font-medium"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">Title / Role</label>
+              <label className="text-xs font-bold text-[var(--text-muted)]">Title / Role</label>
               <input
                 type="text"
                 required
-                placeholder="Fullstack Engineer & Creative Designer"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-emerald-500"
+                placeholder="Fullstack Engineer & Product Designer"
+                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-blue-500 font-medium"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[var(--text-muted)]">Bio Singkat</label>
+            <label className="text-xs font-bold text-[var(--text-muted)]">Bio Singkat</label>
             <textarea
               rows={3}
-              placeholder="Deskripsi latar belakang dan keahlian Anda..."
+              required
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-emerald-500 resize-none"
+              placeholder="Deskripsi singkat diri Anda yang akan tampil di Hero section..."
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-blue-500 font-medium resize-none"
             />
           </div>
 
-          {/* Live Status Badge Controls */}
-          <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] space-y-4">
-            <h3 className="text-sm font-bold text-emerald-400">Status Ketersediaan Kerja (Live Badge)</h3>
+          {/* Social Links */}
+          <div className="space-y-4 pt-4 border-t border-[var(--border-color)]">
+            <h2 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+              <User className="w-4 h-4 text-blue-500" />
+              <span>Tautan Media Sosial & Kontak (Kosongkan jika tidak ingin ditampilkan)</span>
+            </h2>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Teks Status Badge</label>
+                <label className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
+                  <GithubIcon className="w-3.5 h-3.5 text-blue-500" />
+                  <span>URL GitHub (Kosongkan jika tidak ada)</span>
+                </label>
                 <input
-                  type="text"
-                  placeholder="Available for freelance & full-time roles"
-                  value={statusText}
-                  onChange={(e) => setStatusText(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-emerald-500"
+                  type="url"
+                  value={githubUrl}
+                  onChange={(e) => setGithubUrl(e.target.value)}
+                  placeholder="https://github.com/irfanibrahim2549"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-blue-500 font-medium"
                 />
               </div>
 
-              <div className="space-y-1 flex flex-col justify-end">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={isAvailable}
-                    onChange={(e) => setIsAvailable(e.target.checked)}
-                    className="w-4 h-4 accent-emerald-500 rounded"
-                  />
-                  <span>Tampilkan Indikator Lampu Hijau Menyala (Active)</span>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
+                  <LinkedinIcon className="w-3.5 h-3.5 text-blue-500" />
+                  <span>URL LinkedIn (Kosongkan jika tidak ada)</span>
                 </label>
+                <input
+                  type="url"
+                  value={linkedinUrl}
+                  onChange={(e) => setLinkedinUrl(e.target.value)}
+                  placeholder="https://linkedin.com/in/username"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-blue-500 font-medium"
+                />
               </div>
-            </div>
-          </div>
 
-          {/* Social Links */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">Email</label>
-              <input
-                type="email"
-                placeholder="contact@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
+                  <DribbbleIcon className="w-3.5 h-3.5 text-blue-500" />
+                  <span>URL Dribbble (Kosongkan jika tidak ada)</span>
+                </label>
+                <input
+                  type="url"
+                  value={dribbbleUrl}
+                  onChange={(e) => setDribbbleUrl(e.target.value)}
+                  placeholder="https://dribbble.com/username"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-blue-500 font-medium"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">URL GitHub</label>
-              <input
-                type="url"
-                placeholder="https://github.com/username"
-                value={githubUrl}
-                onChange={(e) => setGithubUrl(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">URL LinkedIn</label>
-              <input
-                type="url"
-                placeholder="https://linkedin.com/in/username"
-                value={linkedinUrl}
-                onChange={(e) => setLinkedinUrl(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-emerald-500"
-              />
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Email Kontak (Kosongkan jika tidak ada)</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="irfan@example.com"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-blue-500 font-medium"
+                />
+              </div>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={saving}
-            className="px-8 py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+            className="px-8 py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-blue-600/30"
           >
             <Save className="w-4 h-4" />
-            <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan Profil'}</span>
+            <span>{saving ? 'Menyimpan Profil...' : 'Simpan Perubahan Profil'}</span>
           </button>
         </form>
       )}

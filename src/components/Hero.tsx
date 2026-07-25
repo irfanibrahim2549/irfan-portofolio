@@ -2,7 +2,7 @@
 
 import { ArrowUpRight, Mail } from 'lucide-react'
 import { Profile } from '@/types/database'
-import { GithubIcon, LinkedinIcon } from './Icons'
+import { GithubIcon, LinkedinIcon, DribbbleIcon } from './Icons'
 
 interface HeroProps {
   profile?: Profile | null
@@ -16,8 +16,16 @@ export function Hero({ profile }: HeroProps) {
   const isAvailable = profile?.is_available ?? true
   const avatarUrl = profile?.avatar_url || '/profile.jpg'
 
+  // Social Links Validation (Only render if explicitly filled in Dashboard)
+  const github = profile?.github_url?.trim()
+  const linkedin = profile?.linkedin_url?.trim()
+  const dribbble = profile?.dribbble_url?.trim()
+  const email = profile?.email?.trim()
+
+  const hasAnySocial = Boolean(github || linkedin || dribbble || email)
+
   return (
-    <section className="pt-32 pb-16 px-4 max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
+    <section className="pt-32 pb-16 px-4 max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 font-sans">
       {/* Bio Info Left */}
       <div className="space-y-6 flex-1">
         {/* Live Status Badge */}
@@ -42,7 +50,7 @@ export function Hero({ profile }: HeroProps) {
           {bio}
         </p>
 
-        {/* Action Buttons & Socials */}
+        {/* Action Buttons & Dynamic Social Icons */}
         <div className="pt-2 flex flex-wrap items-center gap-4">
           <a
             href="#contact"
@@ -54,39 +62,69 @@ export function Hero({ profile }: HeroProps) {
 
           <a
             href="#projects"
-            className="px-6 py-3.5 rounded-full glass-panel text-sm font-semibold hover:bg-[var(--card-hover)] transition-all"
+            className="px-6 py-3.5 rounded-full glass-panel text-sm font-bold hover:bg-[var(--card-hover)] transition-all"
           >
             View Works
           </a>
 
-          {/* Social Icons */}
-          <div className="flex items-center gap-2 pl-2 border-l border-[var(--border-color)]">
-            <a
-              href={profile?.github_url || "https://github.com"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 rounded-full glass-panel text-[var(--text-muted)] hover:text-blue-500 hover:scale-110 transition-all"
-              aria-label="GitHub"
-            >
-              <GithubIcon className="w-4 h-4" />
-            </a>
-            <a
-              href={profile?.linkedin_url || "https://linkedin.com"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 rounded-full glass-panel text-[var(--text-muted)] hover:text-blue-500 hover:scale-110 transition-all"
-              aria-label="LinkedIn"
-            >
-              <LinkedinIcon className="w-4 h-4" />
-            </a>
-            <a
-              href={`mailto:${profile?.email || "contact@example.com"}`}
-              className="p-2.5 rounded-full glass-panel text-[var(--text-muted)] hover:text-blue-500 hover:scale-110 transition-all"
-              aria-label="Email"
-            >
-              <Mail className="w-4 h-4" />
-            </a>
-          </div>
+          {/* Social Icons Container (Only rendered if at least 1 social link is filled) */}
+          {hasAnySocial && (
+            <div className="flex items-center gap-2 pl-2 border-l border-[var(--border-color)]">
+              {/* GitHub */}
+              {github && (
+                <a
+                  href={github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2.5 rounded-full glass-panel text-[var(--text-muted)] hover:text-blue-500 hover:scale-110 transition-all"
+                  aria-label="GitHub"
+                  title="GitHub Profile"
+                >
+                  <GithubIcon className="w-4 h-4" />
+                </a>
+              )}
+
+              {/* LinkedIn */}
+              {linkedin && (
+                <a
+                  href={linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2.5 rounded-full glass-panel text-[var(--text-muted)] hover:text-blue-500 hover:scale-110 transition-all"
+                  aria-label="LinkedIn"
+                  title="LinkedIn Profile"
+                >
+                  <LinkedinIcon className="w-4 h-4" />
+                </a>
+              )}
+
+              {/* Dribbble */}
+              {dribbble && (
+                <a
+                  href={dribbble}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2.5 rounded-full glass-panel text-[var(--text-muted)] hover:text-blue-500 hover:scale-110 transition-all"
+                  aria-label="Dribbble"
+                  title="Dribbble Profile"
+                >
+                  <DribbbleIcon className="w-4 h-4" />
+                </a>
+              )}
+
+              {/* Email */}
+              {email && (
+                <a
+                  href={`mailto:${email}`}
+                  className="p-2.5 rounded-full glass-panel text-[var(--text-muted)] hover:text-blue-500 hover:scale-110 transition-all"
+                  aria-label="Email"
+                  title={`Email ${email}`}
+                >
+                  <Mail className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
