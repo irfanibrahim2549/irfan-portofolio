@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ThemeToggle } from './ThemeToggle'
-import { Menu, X, ShieldCheck } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -45,22 +45,14 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Action Controls & Admin Link */}
+        {/* Action Controls (Theme Toggle) */}
         <div className="flex items-center gap-3">
           <ThemeToggle />
-
-          <Link
-            href="/admin/login"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full border border-[var(--border-color)] hover:border-blue-500/40 hover:bg-[var(--card-hover)] transition-all"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
-            <span>Admin</span>
-          </Link>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 rounded-full border border-[var(--border-color)] text-[var(--text-main)]"
+            className="md:hidden p-2 rounded-full border border-[var(--border-color)] text-[var(--text-main)] cursor-pointer"
             aria-label="Toggle Menu"
           >
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -81,14 +73,6 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/admin/login"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-hover)] text-blue-500"
-          >
-            <ShieldCheck className="w-4 h-4 text-blue-500" />
-            <span>Admin Portal</span>
-          </Link>
         </div>
       )}
     </header>

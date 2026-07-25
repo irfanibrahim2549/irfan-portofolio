@@ -10,16 +10,16 @@ export function Footer() {
           <span>© {new Date().getFullYear()} Irfan Portfolio. Crafted with Next.js & Supabase.</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <a href="#projects" className="hover:text-blue-500 transition-colors">
-            Projects
-          </a>
-          <a href="#contact" className="hover:text-blue-500 transition-colors">
-            Contact
-          </a>
-          <Link href="/admin/login" className="hover:text-blue-500 transition-colors font-bold">
-            Admin Portal
+        <div className="flex items-center gap-6">
+          <Link href="/" className="hover:text-blue-500 transition-colors">
+            Home
           </Link>
+          <Link href="/projects" className="hover:text-blue-500 transition-colors">
+            All Works
+          </Link>
+          <a href="/#contact" className="hover:text-blue-500 transition-colors">
+            Get in Touch
+          </a>
         </div>
       </div>
     </footer>
