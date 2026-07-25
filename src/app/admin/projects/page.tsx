@@ -24,9 +24,14 @@ export default function AdminProjectsPage() {
   // Preview Sidebar Internal Tab Switcher: 'card' vs 'detail'
   const [previewTab, setPreviewTab] = useState<'card' | 'detail'>('card')
 
-  // Drag and Drop State for Case Study Sections
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  // Drag and Drop State for Case Study Sections inside Form
+  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null)
+  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(null)
+
+  // Drag and Drop State for Saved Projects List Reordering
+  const [draggedProjIndex, setDraggedProjIndex] = useState<number | null>(null)
+  const [dragOverProjIndex, setDragOverProjIndex] = useState<number | null>(null)
+  const [reordering, setReordering] = useState(false)
 
   // Form states
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -64,7 +69,7 @@ export default function AdminProjectsPage() {
 
   const fetchProjects = async () => {
     setLoading(true)
-    const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('projects').select('*').order('order_index', { ascending: true })
     if (data) setProjects(data)
     setLoading(false)
   }
@@ -137,7 +142,7 @@ export default function AdminProjectsPage() {
     ])
   }
 
-  // Section Manipulation Helpers
+  // Section Manipulation Helpers inside Form
   const addSection = () => {
     const newSec: CaseStudySection = {
       id: `sec-${Date.now()}`,
@@ -174,13 +179,40 @@ export default function AdminProjectsPage() {
     setSections(updated)
   }
 
-  // HTML5 Drag and Drop Reordering Handler
-  const handleDragDropMove = (fromIndex: number, toIndex: number) => {
+  // HTML5 Drag and Drop Reordering Handler for Sections inside Form
+  const handleSectionDragDrop = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return
     const updated = [...sections]
     const [movedItem] = updated.splice(fromIndex, 1)
     updated.splice(toIndex, 0, movedItem)
     setSections(updated)
+  }
+
+  // HTML5 Drag and Drop Reordering Handler for Saved Projects List (Persists order_index in Supabase)
+  const handleProjectDragDrop = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+
+    const reordered = [...projects]
+    const [movedProject] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, movedProject)
+
+    // Update local UI state immediately for instant feedback
+    setProjects(reordered)
+    setReordering(true)
+
+    // Persist new order_index in Supabase
+    try {
+      for (let idx = 0; idx < reordered.length; idx++) {
+        await supabase
+          .from('projects')
+          .update({ order_index: idx + 1 })
+          .eq('id', reordered[idx].id)
+      }
+    } catch (err) {
+      console.warn('Gagal menyimpan urutan projek:', err)
+    } finally {
+      setReordering(false)
+    }
   }
 
   // Helper formatting Markdown per section
@@ -277,7 +309,10 @@ export default function AdminProjectsPage() {
         const { error } = await supabase.from('projects').update(projectPayload).eq('id', editingId)
         saveError = error
       } else {
-        const { error } = await supabase.from('projects').insert(projectPayload)
+        const { error } = await supabase.from('projects').insert({
+          ...projectPayload,
+          order_index: projects.length + 1,
+        })
         saveError = error
       }
 
@@ -322,7 +357,7 @@ export default function AdminProjectsPage() {
               <span>Admin Dashboard</span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 font-bold">Live Builder</span>
             </h1>
-            <p className="text-xs text-[var(--text-muted)] font-medium">Kelola, edit, & drag/drop susun section projek dengan Live Preview instant</p>
+            <p className="text-xs text-[var(--text-muted)] font-medium">Kelola, edit, & drag/drop urutan projek dengan Live Preview instant</p>
           </div>
         </div>
 
@@ -494,36 +529,36 @@ export default function AdminProjectsPage() {
                 {/* Sections List with Drag-and-Drop */}
                 <div className="space-y-4">
                   {sections.map((sec, index) => {
-                    const isBeingDragged = draggedIndex === index
-                    const isOver = dragOverIndex === index && draggedIndex !== index
+                    const isBeingDragged = draggedSectionIndex === index
+                    const isOver = dragOverSectionIndex === index && draggedSectionIndex !== index
 
                     return (
                       <div
                         key={sec.id}
                         draggable={true}
                         onDragStart={(e) => {
-                          setDraggedIndex(index)
+                          setDraggedSectionIndex(index)
                           e.dataTransfer.effectAllowed = 'move'
                         }}
                         onDragOver={(e) => {
                           e.preventDefault()
                           e.dataTransfer.dropEffect = 'move'
-                          setDragOverIndex(index)
+                          setDragOverSectionIndex(index)
                         }}
                         onDragLeave={() => {
-                          setDragOverIndex(null)
+                          setDragOverSectionIndex(null)
                         }}
                         onDrop={(e) => {
                           e.preventDefault()
-                          if (draggedIndex !== null) {
-                            handleDragDropMove(draggedIndex, index)
+                          if (draggedSectionIndex !== null) {
+                            handleSectionDragDrop(draggedSectionIndex, index)
                           }
-                          setDraggedIndex(null)
-                          setDragOverIndex(null)
+                          setDraggedSectionIndex(null)
+                          setDragOverSectionIndex(null)
                         }}
                         onDragEnd={() => {
-                          setDraggedIndex(null)
-                          setDragOverIndex(null)
+                          setDraggedSectionIndex(null)
+                          setDragOverSectionIndex(null)
                         }}
                         className={`p-4 rounded-2xl bg-[var(--bg-main)] border transition-all duration-200 space-y-3 ${
                           isBeingDragged
@@ -876,12 +911,26 @@ export default function AdminProjectsPage() {
         </div>
       </div>
 
-      {/* Daftar Projek Saat Ini (dengan Tombol Edit & Status Featured) */}
+      {/* DAFTAR PROJEK TERSIMPAN: Single Column Vertical List dengan Drag & Drop Reordering */}
       <div className="space-y-4 pt-8 border-t border-[var(--border-color)]">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Layers className="w-5 h-5 text-blue-500" />
-          <span>Daftar Projek Tersimpan ({projects.length})</span>
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Layers className="w-5 h-5 text-blue-500" />
+              <span>Daftar Projek Tersimpan ({projects.length})</span>
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] font-medium">
+              Tarik ikon <span className="font-bold text-blue-500">:::</span> untuk drag & drop susunan tampil di All Works & Featured Project.
+            </p>
+          </div>
+
+          {reordering && (
+            <span className="text-xs font-bold text-blue-500 animate-pulse flex items-center gap-1.5 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Menyimpan Urutan ke Supabase...</span>
+            </span>
+          )}
+        </div>
 
         {loading ? (
           <p className="text-xs text-[var(--text-muted)] font-medium">Memuat daftar projek...</p>
@@ -890,51 +939,102 @@ export default function AdminProjectsPage() {
             Belum ada projek yang tersimpan di Supabase. Silakan susun di atas!
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((p) => (
-              <div
-                key={p.id}
-                className={`glass-panel p-4 rounded-2xl flex items-center justify-between gap-4 border transition-all ${
-                  editingId === p.id ? 'border-blue-500 bg-blue-500/5' : 'border-[var(--border-color)]'
-                }`}
-              >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <img src={p.image_url} alt={p.title} className="w-14 h-14 rounded-xl object-cover shrink-0 bg-zinc-800" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm truncate">{p.title}</h3>
-                      {p.is_featured && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold shrink-0 flex items-center gap-0.5">
-                          <Star className="w-2.5 h-2.5 fill-amber-400" />
-                          <span>Featured</span>
-                        </span>
-                      )}
+          /* VERTICAL LIST (Single Column) DENGAN DRAG & DROP REORDERING */
+          <div className="flex flex-col gap-3">
+            {projects.map((p, index) => {
+              const isBeingDragged = draggedProjIndex === index
+              const isOver = dragOverProjIndex === index && draggedProjIndex !== index
+
+              return (
+                <div
+                  key={p.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    setDraggedProjIndex(index)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    setDragOverProjIndex(index)
+                  }}
+                  onDragLeave={() => {
+                    setDragOverProjIndex(null)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (draggedProjIndex !== null) {
+                      handleProjectDragDrop(draggedProjIndex, index)
+                    }
+                    setDraggedProjIndex(null)
+                    setDragOverProjIndex(null)
+                  }}
+                  onDragEnd={() => {
+                    setDraggedProjIndex(null)
+                    setDragOverProjIndex(null)
+                  }}
+                  className={`glass-panel p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border transition-all duration-200 ${
+                    isBeingDragged
+                      ? 'opacity-30 border-dashed border-blue-500 scale-[0.99]'
+                      : isOver
+                      ? 'border-2 border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20 translate-y-1'
+                      : editingId === p.id
+                      ? 'border-blue-500 bg-blue-500/5 shadow-md shadow-blue-500/10'
+                      : 'border-[var(--border-color)] hover:border-blue-500/40'
+                  }`}
+                >
+                  {/* Left Info & Drag Handle */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="p-1.5 rounded-lg hover:bg-blue-500/10 text-[var(--text-muted)] hover:text-blue-500 cursor-grab active:cursor-grabbing transition-colors shrink-0"
+                      title="Tarik ke atas/bawah untuk mengubah urutan tampil di website"
+                    >
+                      <GripVertical className="w-5 h-5" />
                     </div>
-                    <p className="text-xs text-[var(--text-muted)] truncate font-medium">{p.description}</p>
+
+                    <span className="text-xs font-black text-blue-500 w-5 shrink-0">#{index + 1}</span>
+
+                    <img src={p.image_url} alt={p.title} className="w-14 h-14 rounded-xl object-cover shrink-0 bg-zinc-800 border border-[var(--border-color)]" />
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-bold text-sm text-[var(--text-main)] truncate">{p.title}</h3>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-500 dark:text-blue-400 font-bold shrink-0">
+                          {p.category || 'Web Development'}
+                        </span>
+                        {p.is_featured && (
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold shrink-0 flex items-center gap-1">
+                            <Star className="w-2.5 h-2.5 fill-amber-400" />
+                            <span>Featured</span>
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] truncate font-medium mt-0.5">{p.description}</p>
+                    </div>
+                  </div>
+
+                  {/* Right Controls (Edit & Delete) */}
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      onClick={() => handleEditProject(p)}
+                      className="px-3.5 py-2 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 hover:bg-blue-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                      title="Edit Projek Ini"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteProject(p.id)}
+                      className="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer transition-colors"
+                      title="Hapus Projek"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Edit Button */}
-                  <button
-                    onClick={() => handleEditProject(p)}
-                    className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 hover:bg-blue-500/20 cursor-pointer"
-                    title="Edit Projek Ini"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => handleDeleteProject(p.id)}
-                    className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer"
-                    title="Hapus Projek"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
