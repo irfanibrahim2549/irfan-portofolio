@@ -9,7 +9,7 @@ import {
   Plus, Trash2, LogOut, ArrowLeft, Upload, MessageSquare, Layers, User, 
   Bold, Italic, Heading3, List, ListOrdered, Quote, Code, 
   ChevronUp, ChevronDown, Eye, EyeOff, Sparkles, GripVertical, ArrowUpRight, Tag,
-  Pencil, Star, XCircle, CheckCircle2
+  Pencil, Star, XCircle
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -20,6 +20,10 @@ export default function AdminProjectsPage() {
   const [uploading, setUploading] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor')
+
+  // Drag and Drop State for Case Study Sections
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // Form states
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -100,7 +104,6 @@ export default function AdminProjectsPage() {
     setSections(parsed)
     setActiveTab('editor')
 
-    // Scroll to form smoothly
     if (formRef.current) {
       formRef.current.scrollIntoView({ behavior: 'smooth' })
     }
@@ -165,6 +168,15 @@ export default function AdminProjectsPage() {
     const temp = updated[index]
     updated[index] = updated[targetIndex]
     updated[targetIndex] = temp
+    setSections(updated)
+  }
+
+  // HTML5 Drag and Drop Reordering Handler
+  const handleDragDropMove = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    const updated = [...sections]
+    const [movedItem] = updated.splice(fromIndex, 1)
+    updated.splice(toIndex, 0, movedItem)
     setSections(updated)
   }
 
@@ -259,11 +271,9 @@ export default function AdminProjectsPage() {
       let saveError = null
 
       if (editingId) {
-        // Update existing project
         const { error } = await supabase.from('projects').update(projectPayload).eq('id', editingId)
         saveError = error
       } else {
-        // Create new project
         const { error } = await supabase.from('projects').insert(projectPayload)
         saveError = error
       }
@@ -309,7 +319,7 @@ export default function AdminProjectsPage() {
               <span>Admin Dashboard</span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 font-bold">Live Builder</span>
             </h1>
-            <p className="text-xs text-[var(--text-muted)] font-medium">Kelola, edit, & susun section projek dengan Live Preview instant</p>
+            <p className="text-xs text-[var(--text-muted)] font-medium">Kelola, edit, & drag/drop susun section projek dengan Live Preview instant</p>
           </div>
         </div>
 
@@ -455,16 +465,16 @@ export default function AdminProjectsPage() {
                 </button>
               </div>
 
-              {/* Dynamic Re-orderable Case Study Section Builder */}
+              {/* Dynamic Drag-and-Drop Case Study Section Builder */}
               <div className="space-y-4 pt-2 border-t border-[var(--border-color)]">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
                       <Sparkles className="w-4 h-4" />
-                      <span>Case Study Sections (Drag / Susun Urutan)</span>
+                      <span>Case Study Sections (Drag & Drop / Re-order)</span>
                     </h3>
                     <p className="text-[11px] text-[var(--text-muted)] font-medium">
-                      Gunakan panah &uarr; &darr; untuk mengubah susunan section cerita projek Anda.
+                      Tarik ikon <span className="font-bold text-blue-500">:::</span> untuk drag & drop section, atau gunakan panah &uarr; &darr;.
                     </p>
                   </div>
 
@@ -478,135 +488,176 @@ export default function AdminProjectsPage() {
                   </button>
                 </div>
 
-                {/* Sections List */}
+                {/* Sections List with Drag-and-Drop */}
                 <div className="space-y-4">
-                  {sections.map((sec, index) => (
-                    <div
-                      key={sec.id}
-                      className="p-4 rounded-2xl bg-[var(--bg-main)] border border-[var(--border-color)] space-y-3 transition-all hover:border-blue-500/40"
-                    >
-                      {/* Section Controls Bar */}
-                      <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
-                        <div className="flex items-center gap-2 flex-1">
-                          <GripVertical className="w-4 h-4 text-[var(--text-muted)] cursor-grab shrink-0" />
-                          <span className="text-xs font-extrabold text-blue-500">#{index + 1}</span>
-                          <input
-                            type="text"
-                            value={sec.title}
-                            onChange={(e) => updateSectionTitle(sec.id, e.target.value)}
-                            placeholder="Judul Section (misal: Key Highlights)"
-                            className="flex-1 px-3 py-1 rounded-lg bg-[var(--card-bg)] border border-[var(--border-color)] text-xs font-bold focus:outline-none focus:border-blue-500"
-                          />
-                        </div>
+                  {sections.map((sec, index) => {
+                    const isBeingDragged = draggedIndex === index
+                    const isOver = dragOverIndex === index && draggedIndex !== index
 
-                        {/* Re-order & Delete Action Buttons */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            disabled={index === 0}
-                            onClick={() => moveSection(index, 'up')}
-                            className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--card-hover)] text-[var(--text-muted)] disabled:opacity-30 cursor-pointer"
-                            title="Geser Ke Atas"
-                          >
-                            <ChevronUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={index === sections.length - 1}
-                            onClick={() => moveSection(index, 'down')}
-                            className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--card-hover)] text-[var(--text-muted)] disabled:opacity-30 cursor-pointer"
-                            title="Geser Ke Bawah"
-                          >
-                            <ChevronDown className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeSection(sec.id)}
-                            className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer"
-                            title="Hapus Section"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+                    return (
+                      <div
+                        key={sec.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          setDraggedIndex(index)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'move'
+                          setDragOverIndex(index)
+                        }}
+                        onDragLeave={() => {
+                          setDragOverIndex(null)
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          if (draggedIndex !== null) {
+                            handleDragDropMove(draggedIndex, index)
+                          }
+                          setDraggedIndex(null)
+                          setDragOverIndex(null)
+                        }}
+                        onDragEnd={() => {
+                          setDraggedIndex(null)
+                          setDragOverIndex(null)
+                        }}
+                        className={`p-4 rounded-2xl bg-[var(--bg-main)] border transition-all duration-200 space-y-3 ${
+                          isBeingDragged
+                            ? 'opacity-30 border-dashed border-blue-500 scale-[0.98]'
+                            : isOver
+                            ? 'border-2 border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20 translate-y-1'
+                            : 'border-[var(--border-color)] hover:border-blue-500/40'
+                        }`}
+                      >
+                        {/* Section Controls Bar & Drag Handle */}
+                        <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
+                          <div className="flex items-center gap-2 flex-1">
+                            <div
+                              className="p-1 rounded-lg hover:bg-blue-500/10 text-[var(--text-muted)] hover:text-blue-500 cursor-grab active:cursor-grabbing transition-colors"
+                              title="Tarik ke atas/bawah untuk mengubah urutan"
+                            >
+                              <GripVertical className="w-4 h-4 shrink-0" />
+                            </div>
+                            <span className="text-xs font-extrabold text-blue-500">#{index + 1}</span>
+                            <input
+                              type="text"
+                              value={sec.title}
+                              onChange={(e) => updateSectionTitle(sec.id, e.target.value)}
+                              placeholder="Judul Section (misal: Key Highlights)"
+                              className="flex-1 px-3 py-1 rounded-lg bg-[var(--card-bg)] border border-[var(--border-color)] text-xs font-bold focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
 
-                      {/* Section Content & Toolbar */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-[var(--text-muted)]">Isi Konten Section (Markdown Enabled)</span>
-
-                          {/* Quick Toolbar */}
-                          <div className="flex items-center gap-1 bg-[var(--card-bg)] p-1 rounded-xl border border-[var(--border-color)]">
+                          {/* Re-order Buttons & Delete */}
+                          <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => insertFormatToSection(sec.id, '**', '**')}
-                              className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
-                              title="Bold"
+                              disabled={index === 0}
+                              onClick={() => moveSection(index, 'up')}
+                              className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--card-hover)] text-[var(--text-muted)] disabled:opacity-30 cursor-pointer"
+                              title="Geser Ke Atas"
                             >
-                              <Bold className="w-3 h-3" />
+                              <ChevronUp className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
-                              onClick={() => insertFormatToSection(sec.id, '*', '*')}
-                              className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
-                              title="Italic"
+                              disabled={index === sections.length - 1}
+                              onClick={() => moveSection(index, 'down')}
+                              className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--card-hover)] text-[var(--text-muted)] disabled:opacity-30 cursor-pointer"
+                              title="Geser Ke Bawah"
                             >
-                              <Italic className="w-3 h-3" />
+                              <ChevronDown className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
-                              onClick={() => insertFormatToSection(sec.id, '### ')}
-                              className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
-                              title="Heading 3"
+                              onClick={() => removeSection(sec.id)}
+                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+                              title="Hapus Section"
                             >
-                              <Heading3 className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => insertFormatToSection(sec.id, '\n- ')}
-                              className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
-                              title="Bullet List"
-                            >
-                              <List className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => insertFormatToSection(sec.id, '\n1. ')}
-                              className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
-                              title="Numbered List"
-                            >
-                              <ListOrdered className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => insertFormatToSection(sec.id, '\n> ')}
-                              className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
-                              title="Quote"
-                            >
-                              <Quote className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => insertFormatToSection(sec.id, '\n```\n', '\n```\n')}
-                              className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
-                              title="Code Block"
-                            >
-                              <Code className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
 
-                        <textarea
-                          ref={(el) => { textareaRefs.current[sec.id] = el }}
-                          rows={4}
-                          value={sec.content}
-                          onChange={(e) => updateSectionContent(sec.id, e.target.value)}
-                          placeholder="Ketik poin-poin atau cerita mengenai section ini..."
-                          className="w-full px-3 py-2 rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-blue-500 font-mono resize-y"
-                        />
+                        {/* Section Content & Formatting Toolbar */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-[var(--text-muted)]">Isi Konten Section (Markdown Enabled)</span>
+
+                            {/* Quick Toolbar */}
+                            <div className="flex items-center gap-1 bg-[var(--card-bg)] p-1 rounded-xl border border-[var(--border-color)]">
+                              <button
+                                type="button"
+                                onClick={() => insertFormatToSection(sec.id, '**', '**')}
+                                className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
+                                title="Bold"
+                              >
+                                <Bold className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertFormatToSection(sec.id, '*', '*')}
+                                className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
+                                title="Italic"
+                              >
+                                <Italic className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertFormatToSection(sec.id, '### ')}
+                                className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
+                                title="Heading 3"
+                              >
+                                <Heading3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertFormatToSection(sec.id, '\n- ')}
+                                className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
+                                title="Bullet List"
+                              >
+                                <List className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertFormatToSection(sec.id, '\n1. ')}
+                                className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
+                                title="Numbered List"
+                              >
+                                <ListOrdered className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertFormatToSection(sec.id, '\n> ')}
+                                className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
+                                title="Quote"
+                              >
+                                <Quote className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertFormatToSection(sec.id, '\n```\n', '\n```\n')}
+                                className="p-1 rounded hover:bg-[var(--card-hover)] text-[var(--text-muted)] hover:text-blue-500"
+                                title="Code Block"
+                              >
+                                <Code className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <textarea
+                            ref={(el) => { textareaRefs.current[sec.id] = el }}
+                            rows={4}
+                            value={sec.content}
+                            onChange={(e) => updateSectionContent(sec.id, e.target.value)}
+                            placeholder="Ketik poin-poin atau cerita mengenai section ini..."
+                            className="w-full px-3 py-2 rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] text-xs focus:outline-none focus:border-blue-500 font-mono resize-y"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
