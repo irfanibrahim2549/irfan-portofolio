@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ThemeToggle } from './ThemeToggle'
-import { Menu, X, Sparkles, ShieldCheck } from 'lucide-react'
+import { Menu, X, ShieldCheck } from 'lucide-react'
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -18,13 +18,17 @@ export function Navbar() {
   return (
     <header className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4">
       <nav className="glass-panel w-full max-w-4xl rounded-full px-5 py-3 flex items-center justify-between shadow-2xl transition-all duration-300">
-        {/* Brand / Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
-            <Sparkles className="w-4 h-4" />
+        {/* Brand / Logo: Profile Photo + Name */}
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-blue-500/40 p-0.5 group-hover:scale-110 transition-transform shrink-0 bg-blue-500/10 shadow-sm shadow-blue-500/20">
+            <img
+              src="/profile.jpg"
+              alt="Irfan"
+              className="w-full h-full object-cover rounded-full"
+            />
           </div>
           <span className="font-extrabold text-sm sm:text-base tracking-tight">
-            Portofolio<span className="text-blue-500">.</span>
+            Irfan<span className="text-blue-500">.</span>
           </span>
         </Link>
 
