@@ -9,7 +9,7 @@ import {
   Plus, Trash2, LogOut, ArrowLeft, Upload, MessageSquare, Layers, User, 
   Bold, Italic, Heading3, List, ListOrdered, Quote, Code, 
   ChevronUp, ChevronDown, Eye, EyeOff, Sparkles, GripVertical, ArrowUpRight, Tag,
-  Pencil, Star, XCircle
+  Pencil, Star, XCircle, LayoutGrid, FileText
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -20,6 +20,9 @@ export default function AdminProjectsPage() {
   const [uploading, setUploading] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor')
+
+  // Preview Sidebar Internal Tab Switcher: 'card' vs 'detail'
+  const [previewTab, setPreviewTab] = useState<'card' | 'detail'>('card')
 
   // Drag and Drop State for Case Study Sections
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -743,95 +746,132 @@ export default function AdminProjectsPage() {
           </div>
         </div>
 
-        {/* Right Side: Real-Time Live Preview Sidebar */}
+        {/* Right Side: Real-Time Live Preview Sidebar dengan Tab Switcher */}
         <div className={`space-y-6 ${showPreview ? 'lg:col-span-5' : 'hidden'} ${activeTab === 'editor' ? 'hidden lg:block' : 'block'}`}>
-          <div className="sticky top-8 space-y-6">
-            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border border-blue-500/30 bg-blue-500/5">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400">Real-Time Live Preview</h3>
-              </div>
-              <span className="text-[10px] text-[var(--text-muted)] font-bold">Auto Sync</span>
-            </div>
-
-            {/* Preview Card */}
-            <div className="space-y-2">
+          <div className="sticky top-8 space-y-4">
+            {/* Header & Tab Switcher (Preview Card vs Preview Detail) */}
+            <div className="glass-panel p-3 rounded-2xl flex flex-col gap-3 border border-blue-500/30 bg-blue-500/5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">1. Tampilan Card Katalog</span>
-                {isFeatured && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-amber-400" />
-                    <span>Featured</span>
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400">Real-Time Live Preview</h3>
+                </div>
+                <span className="text-[10px] text-[var(--text-muted)] font-bold">Auto Sync</span>
               </div>
-              <div className="glass-panel rounded-3xl overflow-hidden border border-[var(--border-color)] shadow-xl">
-                <div className="relative aspect-video overflow-hidden bg-zinc-900">
-                  <img
-                    src={imageFile ? URL.createObjectURL(imageFile) : imageUrl || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000'}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 left-3 flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-black/70 backdrop-blur-md text-blue-400 border border-blue-500/30">
-                      {category}
+
+              {/* TAB SWITCHER */}
+              <div className="flex items-center p-1 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)]">
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab('card')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    previewTab === 'card'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Preview Card</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab('detail')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    previewTab === 'detail'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Preview Detail</span>
+                </button>
+              </div>
+            </div>
+
+            {/* TAB 1: Preview Card Katalog */}
+            {previewTab === 'card' && (
+              <div className="space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Tampilan Card Katalog</span>
+                  {isFeatured && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-amber-400" />
+                      <span>Featured</span>
                     </span>
-                  </div>
+                  )}
                 </div>
-                <div className="p-5 space-y-3">
-                  <h4 className="text-lg font-bold text-[var(--text-main)] flex items-center justify-between">
-                    <span>{title || 'Judul Projek Anda'}</span>
-                    <ArrowUpRight className="w-4 h-4 text-blue-500" />
-                  </h4>
-                  <p className="text-xs text-[var(--text-muted)] line-clamp-2 font-medium">
-                    {description || 'Deskripsi singkat projek akan muncul di sini...'}
-                  </p>
-                  <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
-                    <div className="flex flex-wrap gap-1">
-                      {parsedTags.map((t) => (
-                        <span key={t} className="px-2 py-0.5 rounded-full text-[10px] bg-[var(--card-hover)] border border-[var(--border-color)] text-[var(--text-muted)] font-semibold">
-                          {t}
-                        </span>
-                      ))}
+
+                <div className="glass-panel rounded-3xl overflow-hidden border border-[var(--border-color)] shadow-xl">
+                  <div className="relative aspect-video overflow-hidden bg-zinc-900">
+                    <img
+                      src={imageFile ? URL.createObjectURL(imageFile) : imageUrl || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000'}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 left-3 flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-black/70 backdrop-blur-md text-blue-400 border border-blue-500/30">
+                        {category}
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-blue-500">View Detail &rarr;</span>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    <h4 className="text-lg font-bold text-[var(--text-main)] flex items-center justify-between">
+                      <span>{title || 'Judul Projek Anda'}</span>
+                      <ArrowUpRight className="w-4 h-4 text-blue-500" />
+                    </h4>
+                    <p className="text-xs text-[var(--text-muted)] line-clamp-2 font-medium">
+                      {description || 'Deskripsi singkat projek akan muncul di sini...'}
+                    </p>
+                    <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+                      <div className="flex flex-wrap gap-1">
+                        {parsedTags.map((t) => (
+                          <span key={t} className="px-2 py-0.5 rounded-full text-[10px] bg-[var(--card-hover)] border border-[var(--border-color)] text-[var(--text-muted)] font-semibold">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-xs font-bold text-blue-500">View Detail &rarr;</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Preview Halaman Detail Case Study */}
-            <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">2. Tampilan Halaman Detail (4:3 Thumbnail & Sections)</span>
-              <div className="glass-panel p-5 rounded-3xl space-y-4 border border-[var(--border-color)] max-h-[600px] overflow-y-auto">
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/30 uppercase tracking-widest inline-block">
-                  {category}
-                </span>
+            {/* TAB 2: Preview Halaman Detail Case Study */}
+            {previewTab === 'detail' && (
+              <div className="space-y-2 animate-in fade-in duration-200">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Tampilan Halaman Detail (4:3 Thumbnail & Sections)</span>
+                <div className="glass-panel p-5 rounded-3xl space-y-4 border border-[var(--border-color)] max-h-[600px] overflow-y-auto">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/30 uppercase tracking-widest inline-block">
+                    {category}
+                  </span>
 
-                <h3 className="text-2xl font-black text-[var(--text-main)]">
-                  {title || 'Judul Projek Anda'}
-                </h3>
+                  <h3 className="text-2xl font-black text-[var(--text-main)]">
+                    {title || 'Judul Projek Anda'}
+                  </h3>
 
-                <p className="text-xs text-[var(--text-muted)] font-semibold">
-                  {description || 'Deskripsi singkat mengenai latar belakang projek...'}
-                </p>
+                  <p className="text-xs text-[var(--text-muted)] font-semibold">
+                    {description || 'Deskripsi singkat mengenai latar belakang projek...'}
+                  </p>
 
-                {/* 4:3 Thumbnail Preview */}
-                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-900 border border-[var(--border-color)]">
-                  <img
-                    src={imageFile ? URL.createObjectURL(imageFile) : imageUrl || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000'}
-                    alt="Preview 4:3"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                  {/* 4:3 Thumbnail Preview */}
+                  <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-900 border border-[var(--border-color)]">
+                    <img
+                      src={imageFile ? URL.createObjectURL(imageFile) : imageUrl || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000'}
+                      alt="Preview 4:3"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
 
-                {/* Rendered Sections Preview */}
-                <div className="pt-4 border-t border-[var(--border-color)] space-y-4">
-                  <h4 className="text-sm font-bold text-[var(--text-main)]">Case Study Sections:</h4>
-                  <MarkdownRenderer sections={sections} />
+                  {/* Rendered Sections Preview */}
+                  <div className="pt-4 border-t border-[var(--border-color)] space-y-4">
+                    <h4 className="text-sm font-bold text-[var(--text-main)]">Case Study Sections:</h4>
+                    <MarkdownRenderer sections={sections} />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
