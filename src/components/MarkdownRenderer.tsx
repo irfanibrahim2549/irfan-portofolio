@@ -14,9 +14,8 @@ export function MarkdownRenderer({ content, sections }: MarkdownRendererProps) {
         {sections.map((section, sIdx) => (
           <div key={section.id || sIdx} className="space-y-3">
             {section.title && (
-              <h3 className="text-xl font-bold text-[var(--text-main)] border-b border-[var(--border-color)] pb-2 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                <span>{section.title}</span>
+              <h3 className="text-xl sm:text-2xl font-bold text-[var(--text-main)] pt-2">
+                {section.title}
               </h3>
             )}
             <RawMarkdownBlock text={section.content} />
@@ -73,7 +72,7 @@ function RawMarkdownBlock({ text }: { text: string }) {
     }
     if (line.startsWith('## ')) {
       elements.push(
-        <h2 key={index} className="text-2xl font-extrabold text-[var(--text-main)] mt-8 mb-3 border-b border-[var(--border-color)] pb-2">
+        <h2 key={index} className="text-2xl font-extrabold text-[var(--text-main)] mt-8 mb-3">
           {formatInline(line.replace('## ', ''))}
         </h2>
       )
@@ -101,7 +100,7 @@ function RawMarkdownBlock({ text }: { text: string }) {
     // Bullet List (- or *)
     if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
       elements.push(
-        <li key={index} className="ml-6 list-disc text-[var(--text-muted)] my-1 font-medium">
+        <li key={index} className="ml-6 list-disc text-[var(--text-muted)] my-1.5 font-medium">
           {formatInline(line.trim().replace(/^[-*]\s+/, ''))}
         </li>
       )
@@ -111,7 +110,7 @@ function RawMarkdownBlock({ text }: { text: string }) {
     // Numbered List (1. 2. etc)
     if (/^\d+\.\s+/.test(line.trim())) {
       elements.push(
-        <li key={index} className="ml-6 list-decimal text-[var(--text-muted)] my-1 font-medium">
+        <li key={index} className="ml-6 list-decimal text-[var(--text-muted)] my-1.5 font-medium">
           {formatInline(line.trim().replace(/^\d+\.\s+/, ''))}
         </li>
       )

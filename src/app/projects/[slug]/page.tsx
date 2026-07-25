@@ -69,7 +69,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     <main className="min-h-screen relative">
       <Navbar />
 
-      <article className="pt-32 pb-16 px-4 max-w-4xl mx-auto space-y-8">
+      <article className="pt-32 pb-16 px-4 max-w-4xl mx-auto space-y-10">
         {/* Back Link */}
         <Link
           href="/projects"
@@ -122,25 +122,21 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           />
         </div>
 
-        {/* Detail Content Section */}
-        <div className="glass-panel p-8 sm:p-10 rounded-3xl space-y-6 leading-relaxed border border-[var(--border-color)]">
-          <h2 className="text-2xl font-bold border-b border-[var(--border-color)] pb-4">
-            Project Overview & Case Study
-          </h2>
-
+        {/* Clean Unwrapped Case Study Content (Tanpa Kotak Pembungkus & Tanpa Garis Bawah Header) */}
+        <div className="space-y-8 leading-relaxed pt-4">
           <div className="prose prose-invert max-w-none text-[var(--text-muted)]">
             <MarkdownRenderer content={project.content} sections={parsedSections} />
           </div>
 
           {/* Optional External Links if provided */}
           {(project.demo_url || project.github_url) && (
-            <div className="pt-6 border-t border-[var(--border-color)] flex flex-wrap gap-4">
+            <div className="pt-8 border-t border-[var(--border-color)] flex flex-wrap gap-4">
               {project.demo_url && (
                 <a
                   href={project.demo_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+                  className="px-6 py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
                 >
                   <span>Visit Live Demo</span>
                   <ExternalLink className="w-4 h-4" />
@@ -152,7 +148,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                   href={project.github_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-6 py-3 rounded-full glass-panel hover:bg-[var(--card-hover)] font-bold text-xs flex items-center gap-2 transition-all"
+                  className="px-6 py-3.5 rounded-full glass-panel hover:bg-[var(--card-hover)] font-bold text-xs flex items-center gap-2 transition-all"
                 >
                   <GithubIcon className="w-4 h-4" />
                   <span>GitHub Repository</span>
