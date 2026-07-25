@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-plus-jakarta-sans), 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
 @layer base {
   :root {
     --bg-main: #fafafa;
@@ -29,16 +33,40 @@
     --glow-color: rgba(59, 130, 246, 0.6);
   }
 
+  /* Force Plus Jakarta Sans globally across all elements, inputs, buttons, and headings */
+  *,
+  *::before,
+  *::after,
+  html,
+  body,
+  button,
+  input,
+  select,
+  textarea,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  a,
+  div,
+  li,
+  td,
+  th,
+  label,
+  code,
+  pre {
+    font-family: var(--font-plus-jakarta-sans), 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  }
+
   body {
     background-color: var(--bg-main);
     color: var(--text-main);
-    font-family: var(--font-plus-jakarta-sans), 'Plus Jakarta Sans', sans-serif;
     transition: background-color 0.3s ease, color 0.3s ease;
     overflow-x: hidden;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-plus-jakarta-sans), 'Plus Jakarta Sans', sans-serif;
   }
 }
 

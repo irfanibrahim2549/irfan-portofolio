@@ -7,6 +7,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
   variable: '--font-plus-jakarta-sans',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -20,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={plusJakartaSans.variable} suppressHydrationWarning>
-      <body className="antialiased selection:bg-blue-500 selection:text-white font-sans">
+    <html lang="en" className={`${plusJakartaSans.variable} ${plusJakartaSans.className}`} suppressHydrationWarning>
+      <body className={`${plusJakartaSans.className} antialiased selection:bg-blue-500 selection:text-white font-sans`}>
         <Providers>{children}</Providers>
       </body>
     </html>
