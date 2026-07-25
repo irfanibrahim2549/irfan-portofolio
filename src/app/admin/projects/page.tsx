@@ -8,7 +8,8 @@ import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { 
   Plus, Trash2, LogOut, ArrowLeft, Upload, MessageSquare, Layers, User, 
   Bold, Italic, Heading3, List, ListOrdered, Quote, Code, 
-  ChevronUp, ChevronDown, Eye, EyeOff, Sparkles, GripVertical, ArrowUpRight, Tag
+  ChevronUp, ChevronDown, Eye, EyeOff, Sparkles, GripVertical, ArrowUpRight, Tag,
+  Pencil, Star, XCircle, CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -21,6 +22,7 @@ export default function AdminProjectsPage() {
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor')
 
   // Form states
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('Web Development')
   const [description, setDescription] = useState('')
@@ -29,6 +31,7 @@ export default function AdminProjectsPage() {
   const [githubUrl, setGithubUrl] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [isFeatured, setIsFeatured] = useState<boolean>(true)
 
   // Dynamic Case Study Sections Builder
   const [sections, setSections] = useState<CaseStudySection[]>([
@@ -45,6 +48,7 @@ export default function AdminProjectsPage() {
   ])
 
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({})
+  const formRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -56,6 +60,75 @@ export default function AdminProjectsPage() {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
     if (data) setProjects(data)
     setLoading(false)
+  }
+
+  // Populate form for Editing existing project
+  const handleEditProject = (p: Project) => {
+    setEditingId(p.id)
+    setTitle(p.title || '')
+    setCategory(p.category || 'Web Development')
+    setDescription(p.description || '')
+    setTagsInput(Array.isArray(p.tags) ? p.tags.join(', ') : p.tags || '')
+    setDemoUrl(p.demo_url || '')
+    setGithubUrl(p.github_url || '')
+    setImageUrl(p.image_url || '')
+    setIsFeatured(p.is_featured ?? true)
+    setImageFile(null)
+
+    // Parse Sections
+    let parsed: CaseStudySection[] = []
+    if (p.sections && p.sections.length > 0) {
+      parsed = p.sections
+    } else if (p.content && p.content.startsWith('[{"id"')) {
+      try {
+        parsed = JSON.parse(p.content)
+      } catch {
+        parsed = []
+      }
+    }
+
+    if (parsed.length === 0) {
+      parsed = [
+        {
+          id: `sec-${Date.now()}`,
+          title: 'Overview & Detail Case Study',
+          content: p.content || '',
+        },
+      ]
+    }
+
+    setSections(parsed)
+    setActiveTab('editor')
+
+    // Scroll to form smoothly
+    if (formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setTitle('')
+    setCategory('Web Development')
+    setDescription('')
+    setTagsInput('')
+    setDemoUrl('')
+    setGithubUrl('')
+    setImageUrl('')
+    setImageFile(null)
+    setIsFeatured(true)
+    setSections([
+      {
+        id: 'sec-1',
+        title: 'Overview & Problem Statement',
+        content: 'Jelaskan tantangan utama, tujuan projek, dan solusi yang dibangun...',
+      },
+      {
+        id: 'sec-2',
+        title: 'Key Highlights & Fitur Utama',
+        content: '- Fitur 1: Real-time data processing\n- Fitur 2: Responsive glassmorphism UI\n- Fitur 3: Supabase Authentication & Storage',
+      },
+    ])
   }
 
   // Section Manipulation Helpers
@@ -143,7 +216,7 @@ export default function AdminProjectsPage() {
     return data.publicUrl
   }
 
-  const handleCreateProject = async (e: React.FormEvent) => {
+  const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault()
     setUploading(true)
 
@@ -170,7 +243,7 @@ export default function AdminProjectsPage() {
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
       const contentJson = JSON.stringify(sections)
 
-      const { error } = await supabase.from('projects').insert({
+      const projectPayload = {
         title,
         slug,
         category,
@@ -180,21 +253,27 @@ export default function AdminProjectsPage() {
         tags,
         demo_url: demoUrl,
         github_url: githubUrl,
-        is_featured: true,
-      })
+        is_featured: isFeatured,
+      }
 
-      if (error) {
-        alert(`Gagal menambah projek: ${error.message}`)
+      let saveError = null
+
+      if (editingId) {
+        // Update existing project
+        const { error } = await supabase.from('projects').update(projectPayload).eq('id', editingId)
+        saveError = error
       } else {
-        setTitle('')
-        setDescription('')
-        setTagsInput('')
-        setDemoUrl('')
-        setGithubUrl('')
-        setImageUrl('')
-        setImageFile(null)
+        // Create new project
+        const { error } = await supabase.from('projects').insert(projectPayload)
+        saveError = error
+      }
+
+      if (saveError) {
+        alert(`Gagal menyimpan projek: ${saveError.message}`)
+      } else {
+        alert(editingId ? 'Projek berhasil diperbarui!' : 'Projek baru berhasil disimpan!')
+        cancelEdit()
         fetchProjects()
-        alert('Projek berhasil disimpan!')
       }
     } catch (err: any) {
       alert(`Error: ${err?.message || 'Gagal'}`)
@@ -208,6 +287,7 @@ export default function AdminProjectsPage() {
 
     const { error } = await supabase.from('projects').delete().eq('id', id)
     if (!error) {
+      if (editingId === id) cancelEdit()
       fetchProjects()
     } else {
       alert(`Gagal menghapus: ${error.message}`)
@@ -229,7 +309,7 @@ export default function AdminProjectsPage() {
               <span>Admin Dashboard</span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 font-bold">Live Builder</span>
             </h1>
-            <p className="text-xs text-[var(--text-muted)] font-medium">Kelola & susun section projek dengan Live Preview instant</p>
+            <p className="text-xs text-[var(--text-muted)] font-medium">Kelola, edit, & susun section projek dengan Live Preview instant</p>
           </div>
         </div>
 
@@ -287,14 +367,27 @@ export default function AdminProjectsPage() {
       {/* Main Split-Screen Layout (Form Editor Left vs Live Preview Sidebar Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Side: Form Editor & Drag/Reorder Section Builder */}
-        <div className={`space-y-6 ${showPreview ? 'lg:col-span-7' : 'lg:col-span-12'} ${activeTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
+        <div ref={formRef} className={`space-y-6 ${showPreview ? 'lg:col-span-7' : 'lg:col-span-12'} ${activeTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
           <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6">
-            <div className="flex items-center gap-2 font-bold text-lg border-b border-[var(--border-color)] pb-4">
-              <Plus className="w-5 h-5 text-blue-500" />
-              <h2>Tambah Projek & Case Study Builder</h2>
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+              <div className="flex items-center gap-2 font-bold text-lg">
+                {editingId ? <Pencil className="w-5 h-5 text-blue-500" /> : <Plus className="w-5 h-5 text-blue-500" />}
+                <h2>{editingId ? `Edit Projek: ${title || 'Saved Project'}` : 'Tambah Projek Baru & Case Study Builder'}</h2>
+              </div>
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 hover:bg-zinc-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>Batal Edit</span>
+                </button>
+              )}
             </div>
 
-            <form onSubmit={handleCreateProject} className="space-y-6">
+            <form onSubmit={handleSaveProject} className="space-y-6">
               {/* Basic Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1 sm:col-span-2">
@@ -333,6 +426,33 @@ export default function AdminProjectsPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-sm focus:outline-none focus:border-blue-500 resize-none font-medium"
                 />
+              </div>
+
+              {/* TOGGLE FEATURED PROJECT */}
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--bg-main)] border border-[var(--border-color)] hover:border-blue-500/30 transition-all">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Star className={`w-4 h-4 ${isFeatured ? 'text-amber-400 fill-amber-400' : 'text-[var(--text-muted)]'}`} />
+                    <span className="text-xs font-bold text-[var(--text-main)]">Featured Project (Tampilkan di Home Page)</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-muted)] font-medium">
+                    Aktifkan jika Anda ingin projek ini muncul di section Featured Projects pada Halaman Utama.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsFeatured(!isFeatured)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    isFeatured ? 'bg-blue-600' : 'bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      isFeatured ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* Dynamic Re-orderable Case Study Section Builder */}
@@ -547,14 +667,27 @@ export default function AdminProjectsPage() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={uploading}
-                className="px-8 py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-blue-600/30"
-              >
-                <Upload className="w-4 h-4" />
-                <span>{uploading ? 'Menyimpan & Uploading...' : 'Simpan Projek'}</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="px-8 py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-blue-600/30"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>{uploading ? 'Menyimpan...' : editingId ? 'Update Projek' : 'Simpan Projek'}</span>
+                </button>
+
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="px-6 py-3.5 rounded-full glass-panel hover:bg-zinc-800 text-xs font-bold flex items-center gap-2 cursor-pointer"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Batal</span>
+                  </button>
+                )}
+              </div>
             </form>
           </div>
         </div>
@@ -572,7 +705,15 @@ export default function AdminProjectsPage() {
 
             {/* Preview Card */}
             <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">1. Tampilan Card Katalog</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">1. Tampilan Card Katalog</span>
+                {isFeatured && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-amber-400" />
+                    <span>Featured</span>
+                  </span>
+                )}
+              </div>
               <div className="glass-panel rounded-3xl overflow-hidden border border-[var(--border-color)] shadow-xl">
                 <div className="relative aspect-video overflow-hidden bg-zinc-900">
                   <img
@@ -580,7 +721,7 @@ export default function AdminProjectsPage() {
                     alt="Preview"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-3 left-3">
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
                     <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-black/70 backdrop-blur-md text-blue-400 border border-blue-500/30">
                       {category}
                     </span>
@@ -644,7 +785,7 @@ export default function AdminProjectsPage() {
         </div>
       </div>
 
-      {/* Daftar Projek Saat Ini */}
+      {/* Daftar Projek Saat Ini (dengan Tombol Edit & Status Featured) */}
       <div className="space-y-4 pt-8 border-t border-[var(--border-color)]">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Layers className="w-5 h-5 text-blue-500" />
@@ -652,35 +793,55 @@ export default function AdminProjectsPage() {
         </h2>
 
         {loading ? (
-          <p className="text-xs text-[var(--text-muted)]">Memuat daftar projek...</p>
+          <p className="text-xs text-[var(--text-muted)] font-medium">Memuat daftar projek...</p>
         ) : projects.length === 0 ? (
-          <div className="glass-panel p-8 text-center text-xs text-[var(--text-muted)] rounded-2xl">
+          <div className="glass-panel p-8 text-center text-xs text-[var(--text-muted)] rounded-2xl font-medium">
             Belum ada projek yang tersimpan di Supabase. Silakan susun di atas!
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((p) => (
-              <div key={p.id} className="glass-panel p-4 rounded-2xl flex items-center justify-between gap-4">
+              <div
+                key={p.id}
+                className={`glass-panel p-4 rounded-2xl flex items-center justify-between gap-4 border transition-all ${
+                  editingId === p.id ? 'border-blue-500 bg-blue-500/5' : 'border-[var(--border-color)]'
+                }`}
+              >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <img src={p.image_url} alt={p.title} className="w-14 h-14 rounded-xl object-cover shrink-0 bg-zinc-800" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-sm truncate">{p.title}</h3>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 dark:text-blue-400 font-bold shrink-0">
-                        {p.category || 'Web Development'}
-                      </span>
+                      {p.is_featured && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold shrink-0 flex items-center gap-0.5">
+                          <Star className="w-2.5 h-2.5 fill-amber-400" />
+                          <span>Featured</span>
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-[var(--text-muted)] truncate font-medium">{p.description}</p>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleDeleteProject(p.id)}
-                  className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer shrink-0"
-                  title="Hapus Projek"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Edit Button */}
+                  <button
+                    onClick={() => handleEditProject(p)}
+                    className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 hover:bg-blue-500/20 cursor-pointer"
+                    title="Edit Projek Ini"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+
+                  {/* Delete Button */}
+                  <button
+                    onClick={() => handleDeleteProject(p.id)}
+                    className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+                    title="Hapus Projek"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

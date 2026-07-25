@@ -26,14 +26,25 @@ export default async function HomePage() {
 
         if (profileData) profile = profileData
 
-        // Fetch Projects
-        const { data: projectsData } = await supabase
+        // Fetch Featured Projects for Landing Page
+        const { data: featuredData } = await supabase
           .from('projects')
           .select('*')
+          .eq('is_featured', true)
           .order('order_index', { ascending: true })
 
-        if (Array.isArray(projectsData) && projectsData.length > 0) {
-          projects = projectsData
+        if (Array.isArray(featuredData) && featuredData.length > 0) {
+          projects = featuredData
+        } else {
+          // Fallback to all projects if no featured flag set
+          const { data: allData } = await supabase
+            .from('projects')
+            .select('*')
+            .order('order_index', { ascending: true })
+
+          if (Array.isArray(allData) && allData.length > 0) {
+            projects = allData
+          }
         }
       }
     } catch (err) {
