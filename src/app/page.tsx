@@ -58,8 +58,10 @@ export default async function HomePage() {
       <Hero profile={profile} />
       <Projects projects={projects} />
       <TechStack />
-      <ContactForm />
-      <Footer />
+      <div className="w-full bg-gradient-to-b from-transparent via-blue-500/10 to-blue-600/20 dark:via-blue-500/10 dark:to-blue-500/30">
+        <ContactForm />
+        <Footer />
+      </div>
     </main>
   )
 }
